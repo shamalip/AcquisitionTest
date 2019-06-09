@@ -2,38 +2,43 @@ import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.util.Map;
-import edu.uci.ics.perpetual.acquisition.datatypes.DataSource;
+
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import edu.uci.ics.perpetual.acquisition.datatypes.AcquisitionRequest;
 import edu.uci.ics.perpetual.acquisition.datatypes.Producer;
-import edu.uci.ics.perpetual.acquisition.datatypes.Request;
 
 public class TemperatureProducer extends Producer{
 
 	private static final String COMMA_DELIMITER = ",";
 
 
-	public TemperatureProducer(Request request, DataSource source) {
-		super(request, source);
+	public TemperatureProducer(AcquisitionRequest request) {
+		super(request);
 	}
 
 	@Override
 	public void fetch() throws IOException{
+		System.out.println("fetching temperatures");
 		BufferedReader br = null;
 		try {
-			Map<String,Object> params = getMapFromJSON(request.getAcquisitionFunction().getParams());
-			String tempFilePath = (String) params.get("filePath");
-			br = new BufferedReader(new FileReader(tempFilePath+"\\"+source.getDsInstanceName()+".csv"));
+			Map<String, String> params = request.getAcquisitionFunctionParameters();
+			String tempFilePath = params.get("filePath");
+			br = new BufferedReader(new FileReader(tempFilePath));
 			String line;
 			int idx = 0;
+			line = br.readLine();			
 			while ((line = br.readLine()) != null) {
 				String[] values = line.split(COMMA_DELIMITER);
-				sendMessage(idx, values);
+				String jsonString = "{\"temperature\":"+values[1]+",\"R1\":"+values[2]+"}";
+				System.out.println("PRODUCER UDF : Sending..." + jsonString);
+				sendMessage(idx,jsonString);
 			}
-		} catch (FileNotFoundException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		} catch (IOException e) {
-			// TODO Auto-generated catch block
+		} catch (Exception e) {
+			System.out.println("PRODUCER UDF : Error" + e.getMessage());
 			e.printStackTrace();
 		}
 		finally {
@@ -42,5 +47,6 @@ public class TemperatureProducer extends Producer{
 			}
 		}
 	}
+	
 
 }
